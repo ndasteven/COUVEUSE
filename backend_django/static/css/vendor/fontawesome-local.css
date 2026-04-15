@@ -1,0 +1,156 @@
+/*!
+ * Font Awesome Free 6.5.1 - Local Version
+ * Local fonts for offline use
+ */
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("../../webfonts/fa-solid-900.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../webfonts/fa-regular-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Brands';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../webfonts/fa-brands-400.woff2") format("woff2");
+}
+
+/* Solid icons */
+.fa-solid,
+.fas {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+}
+
+/* Regular icons */
+.fa-regular,
+.far {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 400;
+}
+
+/* Brands icons */
+.fa-brands,
+.fab {
+  font-family: 'Font Awesome 6 Brands';
+  font-weight: 400;
+}
+
+/* Base icon styles */
+.fa,
+.fas,
+.far,
+.fal,
+.fad,
+.fab {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}
+
+/* Icon sizing */
+.fa-xs { font-size: 0.75em; }
+.fa-sm { font-size: 0.875em; }
+.fa-lg { font-size: 1.25em; line-height: 0.05em; vertical-align: -0.075em; }
+.fa-xl { font-size: 1.5em; line-height: 0.04167em; vertical-align: -0.125em; }
+.fa-2x { font-size: 2em; }
+.fa-3x { font-size: 3em; }
+.fa-4x { font-size: 4em; }
+.fa-5x { font-size: 5em; }
+.fa-6x { font-size: 6em; }
+.fa-7x { font-size: 7em; }
+.fa-8x { font-size: 8em; }
+.fa-9x { font-size: 9em; }
+.fa-10x { font-size: 10em; }
+
+/* Fixed width */
+.fa-fw { text-align: center; width: 1.25em; }
+
+/* List icons */
+.fa-ul { list-style-type: none; margin-left: 2.5em; padding-left: 0; }
+.fa-ul > li { position: relative; }
+.fa-li { left: -2em; position: absolute; text-align: center; width: 2em; line-height: inherit; }
+
+/* Animation */
+.fa-spin { animation: fa-spin 2s linear infinite; }
+.fa-spin-pulse { animation: fa-spin 1s steps(8) infinite; }
+@keyframes fa-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Rotated & Flipped */
+.fa-rotate-90 { transform: rotate(90deg); }
+.fa-rotate-180 { transform: rotate(180deg); }
+.fa-rotate-270 { transform: rotate(270deg); }
+.fa-flip-horizontal { transform: scale(-1, 1); }
+.fa-flip-vertical { transform: scale(1, -1); }
+.fa-flip-both { transform: scale(-1, -1); }
+
+/* Stack */
+.fa-stack { display: inline-block; height: 2em; line-height: 2em; position: relative; vertical-align: middle; width: 2.5em; }
+.fa-stack-1x, .fa-stack-2x { left: 0; position: absolute; text-align: center; width: 100%; z-index: 1; }
+.fa-stack-1x { line-height: inherit; }
+.fa-stack-2x { font-size: 2em; }
+
+/* Inverse */
+.fa-inverse { color: #fff; }
+
+/* Commonly used icons mapping */
+.fa-egg::before { content: "\f7fb"; }
+.fa-box::before { content: "\f466"; }
+.fa-users::before { content: "\f0c0"; }
+.fa-bell::before { content: "\f0f3"; }
+.fa-bell-slash::before { content: "\f1f6"; }
+.fa-calendar::before, .fa-calendar-alt::before { content: "\f073"; }
+.fa-chart-line::before { content: "\f201"; }
+.fa-cog::before { content: "\f013"; }
+.fa-plus::before { content: "\2b"; }
+.fa-times::before { content: "\f00d"; }
+.fa-check::before { content: "\f00c"; }
+.fa-edit::before, .fa-pen::before { content: "\f044"; }
+.fa-trash::before { content: "\f1f8"; }
+.fa-eye::before { content: "\f06e"; }
+.fa-bars::before { content: "\f0c9"; }
+.fa-home::before { content: "\f015"; }
+.fa-search::before { content: "\f002"; }
+.fa-filter::before { content: "\f0b0"; }
+.fa-sort::before { content: "\f0dc"; }
+.fa-sort-up::before { content: "\f0de"; }
+.fa-sort-down::before { content: "\f0dd"; }
+.fa-exclamation-triangle::before, .fa-exclamation-circle::before { content: "\f071"; }
+.fa-exclamation::before { content: "\21"; }
+.fa-info-circle::before { content: "\f05a"; }
+.fa-question-circle::before { content: "\f059"; }
+.fa-clock::before { content: "\f017"; }
+.fa-wifi::before { content: "\f1eb"; }
+.fa-shield-alt::before { content: "\f3ed"; }
+.fa-dna::before { content: "\f471"; }
+.fa-layer-group::before { content: "\f5fd"; }
+.fa-sync::before { content: "\f021"; }
+.fa-chevron-left::before { content: "\f053"; }
+.fa-chevron-right::before { content: "\f054"; }
+.fa-arrow-up::before { content: "\f062"; }
+.fa-arrow-down::before { content: "\f063"; }
+.fa-phone::before { content: "\f095"; }
+.fa-envelope::before { content: "\f0e0"; }
+.fa-user::before { content: "\f007"; }
+.fa-save::before { content: "\f0c7"; }
+.fa-print::before { content: "\f02f"; }
+.fa-download::before { content: "\f019"; }
+.fa-upload::before { content: "\f093"; }
+.fa-power-off::before { content: "\f011"; }
+.fa-redo::before { content: "\f01e"; }
+.fa-undo::before { content: "\f0e2"; }

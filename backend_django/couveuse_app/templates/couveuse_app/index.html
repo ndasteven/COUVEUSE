@@ -1,0 +1,191 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>🥚 Couveuse Manager</title>
+    
+    <!-- Tailwind CSS + DaisyUI (LOCAL - Offline Ready) -->
+    <link href="{% static 'css/vendor/daisyui.min.css' %}" rel="stylesheet" type="text/css" />
+    <script src="{% static 'js/vendor/tailwind.min.js' %}"></script>
+
+    <!-- Font Awesome (LOCAL - Offline Ready) -->
+    <link rel="stylesheet" href="{% static 'css/vendor/fontawesome-local.css' %}">
+
+    <!-- Socket.io pour WebSocket (LOCAL - Offline Ready) -->
+    <script src="{% static 'js/vendor/socket.io.min.js' %}"></script>
+    
+    <!-- Chart.js pour les graphiques (LOCAL - Offline Ready) -->
+    <script src="{% static 'js/vendor/chart.min.js' %}"></script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#10b981">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="bg-base-200 min-h-screen">
+    
+    <!-- Sidebar -->
+    <div class="drawer lg:drawer-open">
+        <input id="sidebar-drawer" type="checkbox" class="drawer-toggle" />
+        
+        <!-- Contenu principal -->
+        <div class="drawer-content">
+            <!-- Navbar -->
+            <nav class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
+                <div class="flex-1">
+                    <label for="sidebar-drawer" class="btn btn-square btn-ghost lg:hidden">
+                        <i class="fas fa-bars text-xl"></i>
+                    </label>
+                    <h1 class="text-xl font-bold text-primary ml-2 flex items-center gap-3">
+                        <img src="{% static 'assets/img/logo_couveuse.png' %}" alt="Logo" class="h-12 w-auto">
+                        <span>Couveuse Manager</span>
+                    </h1>
+                </div>
+                <div class="flex-none gap-2">
+                    <!-- Bouton notifications -->
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-circle">
+                            <div class="indicator">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span id="badge-notif" class="badge badge-sm badge-error indicator-item hidden">0</span>
+                            </div>
+                        </label>
+                        <div tabindex="0" class="mt-3 z-[1] card card-compact dropdown-content w-80 bg-base-100 shadow-xl">
+                            <div class="card-body">
+                                <h3 class="font-bold text-lg">🔔 Alertes</h3>
+                                <div id="liste-alertes" class="max-h-96 overflow-y-auto space-y-2 pr-2">
+                                    <p class="text-sm text-gray-500">Aucune alerte</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bouton hors ligne -->
+                    <div id="status-connexion" class="tooltip" data-tip="En ligne">
+                        <div class="indicator">
+                            <i class="fas fa-wifi text-success text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Contenu de la page -->
+            <main class="p-6" id="app-content">
+                <!-- Le contenu sera chargé dynamiquement -->
+            </main>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="drawer-side z-50">
+            <label for="sidebar-drawer" class="drawer-overlay"></label>
+            <aside class="bg-base-100 w-64 min-h-screen shadow-xl">
+                <div class="p-4 border-b border-base-200">
+                    <div class="flex items-center gap-3">
+                        <div class="avatar">
+                            <div class="w-16 rounded-full bg-primary p-1">
+                                <img src="{% static 'assets/img/logo_couveuse.png' %}" alt="Logo Couveuse" class="rounded-full">
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Couveuse</h2>
+                            <p class="text-xs text-gray-500">Gestion d'incubation</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <ul class="menu p-2 text-base-content">
+                    <li>
+                        <a onclick="chargerPage('dashboard')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-chart-line"></i> Tableau de bord
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('calendrier')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-calendar-alt"></i> Calendrier
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('depots')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-box"></i> Dépôts
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('palettes')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-layer-group"></i> Palettes
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('clients')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-users"></i> Clients
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('races')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-dna"></i> Races
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('alertes')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-exclamation-triangle"></i> Alertes
+                            <span id="menu-badge-alertes" class="badge badge-error badge-sm ml-auto hidden">0</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a onclick="chargerPage('caisse')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-cash-register"></i> Caisse
+                        </a>
+                    </li>
+                    <div class="divider my-2"></div>
+                    <li>
+                        <a onclick="chargerPage('parametres')" class="hover:bg-primary hover:text-primary-content">
+                            <i class="fas fa-cog"></i> Paramètres
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="absolute bottom-0 w-full p-4 border-t border-base-200">
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>v1.0.0</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Modal universel -->
+    <dialog id="modal-universel" class="modal">
+        <div class="modal-box max-w-2xl">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+            <div id="modal-content"></div>
+        </div>
+    </dialog>
+
+    <!-- Audio alarme (LOCAL - Offline Ready) -->
+    <audio id="alarm-sound" loop>
+        <source src="{% static 'audio/alarm.mp3' %}" type="audio/mpeg">
+    </audio>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/app.js' %}?v=12"></script>
+    <script src="{% static 'js/alarm.js' %}?v=12"></script>
+    
+    <!-- Service Worker pour PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{% static "sw.js" %}')
+                .then(reg => console.log('SW registered:', reg))
+                .catch(err => console.log('SW error:', err));
+        }
+    </script>
+</body>
+</html>
