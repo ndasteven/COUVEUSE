@@ -110,9 +110,20 @@ class DepotSerializer(serializers.ModelSerializer):
         # Capturer les anciennes valeurs AVANT la mise à jour
         ancienne_date = instance.alerte_perso_date
         ancien_active = instance.alerte_perso_active
+        ancienne_date_depot = instance.date_heure_depôt
+        ancien_race_id = instance.race_id
         
         # Appliquer les changements via la méthode parent
         instance = super().update(instance, validated_data)
+
+        # Recalculer la date d'éclosion si la date du dépôt ou la race change
+        if ('date_heure_depôt' in validated_data or 'race' in validated_data or 'race_id' in validated_data) and not validated_data.get('date_eclosion_prevue'):
+            if instance.date_heure_depôt and instance.race and hasattr(instance.race, 'categorie'):
+                instance.date_eclosion_prevue = (
+                    instance.date_heure_depôt.date() +
+                    timedelta(days=instance.race.categorie.duree_incubation_jours)
+                )
+                instance.save(update_fields=['date_eclosion_prevue'])
 
         # Si l'alerte est active et que la date a changé (ou vient d'être activée),
         # supprimer les anciennes alertes perso de ce dépôt pour permettre
@@ -125,8 +136,6 @@ class DepotSerializer(serializers.ModelSerializer):
                 # Supprimer les anciennes alertes perso pour ce dépôt
                 Alerte.objects.filter(depot=instance, type_alerte='perso').delete()
                 print(f"🗑️ Anciennes alertes perso supprimées pour le dépôt {instance.id}")
-
-        instance.save()
 
         return instance
 

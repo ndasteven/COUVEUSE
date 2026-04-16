@@ -186,7 +186,25 @@ class Depot(models.Model):
 
     def save(self, *args, **kwargs):
         # Calcul automatique de la date d'éclosion SI elle n'existe pas
-        if not self.date_eclosion_prevue and self.date_heure_depôt and self.race_id:
+        should_recalc = False
+        if self.date_heure_depôt and self.race_id:
+            if not self.date_eclosion_prevue:
+                should_recalc = True
+            elif self.pk:
+                try:
+                    old = Depot.objects.select_related('race__categorie').get(pk=self.pk)
+                    old_expected = None
+                    if old.date_heure_depôt and old.race and old.race.categorie:
+                        old_expected = old.date_heure_depôt.date() + timedelta(days=old.race.categorie.duree_incubation_jours)
+
+                    changed_date = old.date_heure_depôt != self.date_heure_depôt
+                    changed_race = old.race_id != self.race_id
+                    if (changed_date or changed_race) and self.date_eclosion_prevue == old_expected:
+                        should_recalc = True
+                except Depot.DoesNotExist:
+                    should_recalc = True
+
+        if should_recalc:
             # S'assurer que la race est chargée
             if hasattr(self.race, 'categorie') and self.race.categorie:
                 self.date_eclosion_prevue = (
@@ -194,7 +212,6 @@ class Depot(models.Model):
                     timedelta(days=self.race.categorie.duree_incubation_jours)
                 )
             else:
-                # Charger la race depuis la BDD si nécessaire
                 from .models import Race
                 race = Race.objects.select_related('categorie').get(id=self.race_id)
                 self.date_eclosion_prevue = (

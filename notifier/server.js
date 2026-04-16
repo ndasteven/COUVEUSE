@@ -3,27 +3,77 @@
  * Technologies: Node.js + Express + Socket.io + MySQL
  */
 
+process.env.TZ = 'UTC';
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
 const cors = require('cors');
+const fetch = globalThis.fetch || require('node-fetch');
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
 
+const TELEGRAM_ENABLED = process.env.TELEGRAM_ENABLED === 'true';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS
+    ? process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim()).filter(Boolean)
+    : [];
+
+async function sendTelegramMessage(text) {
+    if (!TELEGRAM_ENABLED || !TELEGRAM_BOT_TOKEN || TELEGRAM_CHAT_IDS.length === 0) {
+        return false;
+    }
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    let success = true;
+
+    for (const chatId of TELEGRAM_CHAT_IDS) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text,
+                    parse_mode: 'HTML'
+                })
+            });
+
+            const result = await response.json();
+            if (!result.ok) {
+                console.error(`❌ Telegram erreur pour chat_id=${chatId}:`, result);
+                success = false;
+            }
+        } catch (error) {
+            console.error(`❌ Échec Telegram pour chat_id=${chatId}:`, error.message || error);
+            success = false;
+        }
+    }
+
+    return success;
+}
+
 // Configuration Socket.io avec CORS
 const io = socketIo(server, {
     cors: {
-        origin: ['http://localhost:8000', 'http://127.0.0.1:8000'],
+        origin: true,
         methods: ['GET', 'POST'],
         credentials: true
     }
 });
 
 const PORT = process.env.PORT || 3001;
+
+const getServerUtcNow = () => {
+    const now = new Date();
+    return {
+        iso: now.toISOString(),
+        timestamp: now.getTime()
+    };
+};
 
 // Configuration MySQL
 const dbConfig = {
@@ -33,17 +83,40 @@ const dbConfig = {
     database: process.env.DB_NAME || 'couveuse_db',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: 'Z'
 };
 
 let db;
 let connectedClients = new Set();
+
+const serverTimeInterval = setInterval(() => {
+    if (connectedClients.size > 0) {
+        io.emit('server_time', getServerUtcNow());
+    }
+}, 1000);
+
+const utcDate = dateValue => {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) return new Date(dateValue.toISOString());
+    const normalized = String(dateValue).replace(' ', 'T');
+    return normalized.endsWith('Z') ? new Date(normalized) : new Date(`${normalized}Z`);
+};
+
+const formatUtcDate = (dateValue, locale = 'fr-FR', options = {}) => {
+    const date = utcDate(dateValue);
+    if (!date || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(locale, { timeZone: 'UTC', ...options });
+};
 
 // Initialisation de la base de données
 async function initDB() {
     try {
         db = await mysql.createConnection(dbConfig);
         console.log('✅ Connecté à MySQL');
+        
+        // Forcer la timezone UTC pour les fonctions de date MySQL (NOW(), CURDATE(), etc.)
+        await db.query("SET time_zone = '+00:00'");
         
         // Tester la connexion
         await db.ping();
@@ -67,6 +140,11 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Endpoint pour l'heure serveur en UTC
+app.get('/server-time', (req, res) => {
+    res.json(getServerUtcNow());
+});
+
 // Gestion des connexions Socket.io
 io.on('connection', (socket) => {
     console.log('🔌 Client connecté:', socket.id);
@@ -74,6 +152,9 @@ io.on('connection', (socket) => {
     
     // Envoyer le nombre de clients connectés
     io.emit('clients_count', connectedClients.size);
+
+    // Envoyer l'heure serveur immédiatement
+    socket.emit('server_time', getServerUtcNow());
     
     // Gérer la demande d'alertes initiales
     socket.on('get_initial_alertes', async () => {
@@ -214,7 +295,11 @@ async function mettreAJourStatutsDepasses() {
                     ? `🏷️ Palette ${depot.palette_numero}`
                     : '❌ Sans palette';
                 const categorieInfo = depot.categorie_nom || '';
-                const dateDepotFormatted = new Date(depot.date_heure_depôt).toLocaleDateString('fr-FR');
+                const dateDepotFormatted = formatUtcDate(depot.date_heure_depôt, 'fr-FR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
 
                 const message = `⚠️ ÉCLOSION MANQUÉE - IL Y A ${joursRetard} JOUR(S) !\n` +
                     `👤 Client: ${clientComplet}\n` +
@@ -246,7 +331,7 @@ async function mettreAJourStatutsDepasses() {
                     jours_restants: depot.jours_restants,
                     jours_retard: joursRetard,
                     en_retard: true,
-                    date_prevue: new Date(),
+                    date_prevue: new Date().toISOString(),
                     est_perso: false
                 });
 
@@ -310,18 +395,18 @@ async function getDepotsEnCours() {
 // Vérifier et envoyer les alertes
 async function checkAndSendAlertes() {
     try {
-        console.log('🔍 Vérification des alertes...', new Date().toLocaleTimeString('fr-FR'));
+        console.log('🔍 Vérification des alertes...', new Date().toLocaleTimeString('fr-FR', { timeZone: 'UTC' }));
         
         // 🔄 Mettre à jour les statuts des dépôts dont la date d'éclosion est passée
         await mettreAJourStatutsDepasses();
         
         const depots = await getDepotsEnCours();
-        const aujourdHui = new Date();
+        const aujourdHui = utcDate(new Date());
         const alertesEnvoyees = [];
         
         for (const depot of depots) {
             const joursRestants = depot.jours_restants;
-            const dateEclo = new Date(depot.date_eclosion_prevue);
+            const dateEclo = utcDate(depot.date_eclosion_prevue);
 
             // Calculer la différence en jours
             const diffTime = dateEclo - aujourdHui;
@@ -343,7 +428,11 @@ async function checkAndSendAlertes() {
                 ? `🏷️ Palette ${depot.palette_numero}`
                 : '❌ Sans palette';
             const categorieInfo = depot.categorie_nom || '';
-            const dateDepotFormatted = new Date(depot.date_heure_depôt).toLocaleDateString('fr-FR');
+            const dateDepotFormatted = formatUtcDate(depot.date_heure_depôt, 'fr-FR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
 
             if (diffDays === 0) {
                 typeAlerte = 'jour_j';
@@ -427,7 +516,7 @@ async function checkAndSendAlertes() {
                         jours_restants: diffDays,
                         jours_retard: estEnRetard ? Math.abs(diffDays) : 0,
                         en_retard: estEnRetard,
-                        date_prevue: new Date(),
+                        date_prevue: new Date().toISOString(),
                         est_perso: false
                     });
 
@@ -437,14 +526,21 @@ async function checkAndSendAlertes() {
 
             // ✅ Vérifier les alertes personnalisées
             if (depot.alerte_perso_active && depot.alerte_perso_date) {
-                const alertePersoDate = new Date(depot.alerte_perso_date);
-                const maintenant = new Date();
-
-                // Vérifier si on est dans la fenêtre de 2 minutes
+                const alertePersoDate = utcDate(depot.alerte_perso_date);
+                const maintenant = utcDate(new Date());
                 const diffMs = alertePersoDate - maintenant;
-                const diffMinutes = Math.ceil(diffMs / (1000 * 60));
+                const withinWindow = diffMs <= 2 * 60 * 1000 && diffMs >= -2 * 60 * 1000;
+                const missedWindow = diffMs < -2 * 60 * 1000;
 
-                if (diffMinutes <= 2 && diffMinutes > -1) {
+                if (withinWindow || missedWindow) {
+                    console.log(`    🔔 Alerte perso candidate pour ${depot.depot_nom} à ${formatUtcDate(alertePersoDate, 'fr-FR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    })} UTC (maintenant ${formatUtcDate(maintenant, 'fr-FR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    })} UTC, diffMs=${diffMs})`);
+
                     // Vérifier si l'alerte perso a déjà été envoyée
                     const [existingPerso] = await db.query(`
                         SELECT id FROM couveuse_app_alerte
@@ -470,12 +566,15 @@ async function checkAndSendAlertes() {
                             race_nom: depot.race_nom,
                             type_alerte: 'perso',
                             message: messagePerso,
+                            alerte_perso_date: depot.alerte_perso_date,
                             jours_restants: diffDays,
-                            date_prevue: new Date(),
+                            date_prevue: new Date().toISOString(),
                             est_perso: true
                         });
 
                         console.log(`  ⏰ Alerte perso envoyée: ${messagePerso}`);
+                    } else {
+                        console.log(`    ✅ Alerte perso déjà envoyée pour le dépôt ${depot.depot_nom}`);
                     }
                 }
             }
@@ -507,6 +606,20 @@ async function checkAndSendAlertes() {
                     });
                 }
             });
+
+            const telegramAlerts = alertesEnvoyees.filter(a => a.type_alerte === 'perso');
+            for (const alerte of telegramAlerts) {
+                const telegramText = `<b>⏰ Alerte personnalisée</b>\n` +
+                    `${alerte.message}\n\n` +
+                    `<b>Dépôt</b> : ${alerte.depot_nom}\n` +
+                    `<b>Client</b> : ${alerte.client_nom}\n` +
+                    `<b>Date alerte</b> : ${formatUtcDate(alerte.alerte_perso_date, 'fr-FR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    })} UTC`;
+
+                await sendTelegramMessage(telegramText);
+            }
         }
         
         // Mettre à jour le compteur d'alertes

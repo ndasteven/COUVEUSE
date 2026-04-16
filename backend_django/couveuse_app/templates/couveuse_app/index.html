@@ -7,7 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>🥚 Couveuse Manager</title>
+    <title>🥚 STAR INCUBATOR</title>
     
     <!-- Tailwind CSS + DaisyUI (LOCAL - Offline Ready) -->
     <link href="{% static 'css/vendor/daisyui.min.css' %}" rel="stylesheet" type="text/css" />
@@ -49,6 +49,11 @@
                     </h1>
                 </div>
                 <div class="flex-none gap-2">
+                    <!-- Heure serveur UTC -->
+                    <div id="server-clock" class="hidden md:flex flex-col text-right text-sm text-gray-500 mr-4">
+                        <span class="font-medium">UTC serveur</span>
+                        <span id="server-clock-value">--</span>
+                    </div>
                     <!-- Bouton notifications -->
                     <div class="dropdown dropdown-end">
                         <label tabindex="0" class="btn btn-ghost btn-circle">
@@ -94,7 +99,7 @@
                             </div>
                         </div>
                         <div>
-                            <h2 class="font-bold text-lg">Couveuse</h2>
+                            <h2 class="font-bold text-lg">STAR INCUBATOR</h2>
                             <p class="text-xs text-gray-500">Gestion d'incubation</p>
                         </div>
                     </div>

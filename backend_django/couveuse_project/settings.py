@@ -27,7 +27,11 @@ SECRET_KEY = 'django-insecure-4-ge0hrtbc=s0o*wv3gi%m#g7vyulmx2_#p1ur5zu74+%b4(1z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# Production settings (override in production)
+# DEBUG = False
+# ALLOWED_HOSTS = ['your_domain.com', 'your_server_ip']
 
 
 # Application definition
@@ -69,6 +73,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Processeur de contexte pour la configuration WebSocket
+                'couveuse_project.context_processors.websocket_config',
             ],
         },
     },
@@ -150,5 +156,9 @@ REST_FRAMEWORK = {
 # Static files
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# WebSocket Configuration
+# URL du serveur WebSocket (Node.js)
+WS_URL = config('WS_URL', default='http://localhost:3001')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

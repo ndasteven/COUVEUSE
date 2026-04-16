@@ -1,6 +1,61 @@
 // Configuration API
 const API_URL = '/api';
-const WS_URL = 'http://localhost:3001';
+const WS_URL = `${window.location.protocol}//${window.location.hostname}:3001`;
+let serverClockPollingInterval = null;
+
+
+
+function formatServerUtcDate(iso) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '--';
+    const pad = n => String(n).padStart(2, '0');
+    const day = date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'UTC'
+    });
+    const hours = pad(date.getUTCHours());
+    const minutes = pad(date.getUTCMinutes());
+    const seconds = pad(date.getUTCSeconds());
+    return `${day} ${hours}:${minutes}:${seconds} UTC`;
+}
+
+function updateServerClockText(text) {
+    const clock = document.getElementById('server-clock');
+    const value = document.getElementById('server-clock-value');
+    if (!clock || !value) return;
+    clock.classList.remove('hidden');
+    value.textContent = text;
+}
+
+async function fetchServerTimeHttp() {
+    try {
+        const response = await fetch(`${WS_URL}/server-time`, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        updateServerClockText(formatServerUtcDate(data.iso || data.timestamp));
+        return true;
+    } catch (error) {
+        updateServerClockText('WS offline');
+        return false;
+    }
+}
+
+function startServerClockPolling() {
+    if (serverClockPollingInterval) return;
+    fetchServerTimeHttp();
+    serverClockPollingInterval = setInterval(fetchServerTimeHttp, 1000);
+}
+
+function stopServerClockPolling() {
+    if (!serverClockPollingInterval) return;
+    clearInterval(serverClockPollingInterval);
+    serverClockPollingInterval = null;
+}
 
 // Fonction pour récupérer le CSRF token depuis les cookies
 function getCSRFToken() {
@@ -59,6 +114,7 @@ function connecterWebSocket() {
         socket.on('connect', () => {
             console.log('✅ Connecté au serveur WebSocket:', socket.id);
             updateStatutConnexion();
+            stopServerClockPolling();
             
             // Demander les alertes initiales
             socket.emit('get_initial_alertes');
@@ -67,11 +123,13 @@ function connecterWebSocket() {
         socket.on('disconnect', () => {
             console.log('❌ Déconnecté du serveur WebSocket');
             updateStatutConnexion();
+            startServerClockPolling();
         });
         
         socket.on('connect_error', (error) => {
             console.log('⚠️ Erreur de connexion WebSocket:', error.message);
             updateStatutConnexion();
+            startServerClockPolling();
         });
         
         // Recevoir les nouvelles alertes en temps réel
@@ -113,6 +171,12 @@ function connecterWebSocket() {
             if (state.page === 'dashboard') {
                 chargerStatsDashboard();
             }
+        });
+
+        // Heure serveur UTC
+        socket.on('server_time', (data) => {
+            updateServerClockText(formatServerUtcDate(data.iso || data.timestamp));
+            stopServerClockPolling();
         });
         
         // Nombre d'alertes
@@ -1822,9 +1886,15 @@ async function enregistrerAlertePerso(id) {
         return;
     }
 
+    let alertePersoDate = null;
+    if (active && dateAlerte) {
+        // Interpréter la date saisie comme UTC/GMT, pas comme heure locale
+        alertePersoDate = new Date(`${dateAlerte}Z`).toISOString();
+    }
+
     const data = {
         alerte_perso_active: active,
-        alerte_perso_date: active ? dateAlerte + ':00' : null,
+        alerte_perso_date: alertePersoDate,
         alerte_perso_message: message
     };
 
