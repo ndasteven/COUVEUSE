@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.urls import path, include
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, RedirectView
 from rest_framework.routers import DefaultRouter
 from couveuse_app import views
 
@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/parametres/activer-code/', views.activer_code_pin, name='activer-code-pin'),
     path('api/parametres/upload-son/', views.upload_son_alerte, name='upload-son-alerte'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('accounts/login/', RedirectView.as_view(url='/login/', permanent=True)),
+    path('accounts/profile/', RedirectView.as_view(url='/', permanent=True)),
     path('logout/', views.logout_view, name='logout'),
     path('', login_required(ensure_csrf_cookie(TemplateView.as_view(template_name='couveuse_app/index.html'))), name='home'),
 ]

@@ -25,9 +25,19 @@ function formatServerUtcDate(iso) {
 function updateServerClockText(text) {
     const clock = document.getElementById('server-clock');
     const value = document.getElementById('server-clock-value');
-    if (!clock || !value) return;
-    clock.classList.remove('hidden');
-    value.textContent = text;
+    const mobileValue = document.getElementById('server-clock-mobile-value');
+    if (clock && value) {
+        clock.classList.remove('hidden');
+        value.textContent = text;
+    }
+    if (mobileValue) {
+        if (text === 'WS offline' || text === '--') {
+            mobileValue.textContent = text;
+        } else {
+            const match = text.match(/(\d{2}:\d{2}:\d{2} UTC)$/);
+            mobileValue.textContent = match ? match[1] : text;
+        }
+    }
 }
 
 async function fetchServerTimeHttp() {
@@ -3639,11 +3649,18 @@ function afficherNotification(message, type = 'info') {
 
 function updateStatutConnexion() {
     const status = document.getElementById('status-connexion');
+    if (!status) {
+        return;
+    }
+    const icon = status.querySelector('i');
+    if (!icon) {
+        return;
+    }
     if (navigator.onLine) {
-        status.querySelector('i').className = 'fas fa-wifi text-success text-xl';
+        icon.className = 'fas fa-wifi text-success text-xl';
         status.setAttribute('data-tip', 'En ligne');
     } else {
-        status.querySelector('i').className = 'fas fa-wifi text-error text-xl';
+        icon.className = 'fas fa-wifi text-error text-xl';
         status.setAttribute('data-tip', 'Hors ligne');
     }
 }

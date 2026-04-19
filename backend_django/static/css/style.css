@@ -150,18 +150,23 @@ body {
         height: 100vh !important;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
+        pointer-events: none !important;
     }
     
     /* Sidebar visible quand le toggle est coché */
     .drawer-toggle:checked ~ .drawer-side {
         transform: translateX(0);
+        pointer-events: auto !important;
     }
     
     /* Le aside (menu latéral) sur mobile */
     .drawer-side aside {
+        position: relative !important;
+        z-index: 1000 !important;
         width: 280px !important;
         max-width: 80vw !important;
         height: 100vh !important;
+        pointer-events: auto !important;
     }
     
     /* Overlay semi-transparent uniquement quand le menu est ouvert */
@@ -172,8 +177,15 @@ body {
         width: 100vw !important;
         height: 100vh !important;
         background-color: rgba(0, 0, 0, 0.5) !important;
-        z-index: 99;
+        z-index: 500 !important;
         cursor: pointer;
+        pointer-events: auto !important;
+    }
+
+    .drawer-side aside * {
+        position: relative !important;
+        z-index: 1010 !important;
+        pointer-events: auto !important;
     }
 }
 
@@ -328,6 +340,9 @@ body {
 @media (max-width: 640px) {
     .table {
         min-width: 500px;
+    }
+    #server-clock {
+        display: none;
     }
 }
 
