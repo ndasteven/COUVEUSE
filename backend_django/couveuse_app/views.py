@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import logout
+from django.shortcuts import redirect
 from datetime import timedelta
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth, TruncWeek, TruncDay
@@ -597,3 +599,10 @@ def upload_son_alerte(request):
         'message': f'Son {type_alerte} mis à jour',
         'chemin': chemin_relatif
     })
+
+
+def logout_view(request):
+    """Déconnecte l'utilisateur et détruit la session."""
+    logout(request)
+    request.session.flush()
+    return redirect('login')

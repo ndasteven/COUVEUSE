@@ -18,42 +18,34 @@ const server = http.createServer(app);
 
 const TELEGRAM_ENABLED = process.env.TELEGRAM_ENABLED === 'true';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHAT_IDS = process.env.TELEGRAM_CHAT_IDS
-    ? process.env.TELEGRAM_CHAT_IDS.split(',').map(id => id.trim()).filter(Boolean)
-    : [];
 
-async function sendTelegramMessage(text) {
-    if (!TELEGRAM_ENABLED || !TELEGRAM_BOT_TOKEN || TELEGRAM_CHAT_IDS.length === 0) {
+async function sendTelegramMessage(chatId, text) {
+    if (!TELEGRAM_ENABLED || !TELEGRAM_BOT_TOKEN || !chatId) {
         return false;
     }
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    let success = true;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text,
+                parse_mode: 'HTML'
+            })
+        });
 
-    for (const chatId of TELEGRAM_CHAT_IDS) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: chatId,
-                    text,
-                    parse_mode: 'HTML'
-                })
-            });
-
-            const result = await response.json();
-            if (!result.ok) {
-                console.error(`❌ Telegram erreur pour chat_id=${chatId}:`, result);
-                success = false;
-            }
-        } catch (error) {
-            console.error(`❌ Échec Telegram pour chat_id=${chatId}:`, error.message || error);
-            success = false;
+        const result = await response.json();
+        if (!result.ok) {
+            console.error(`❌ Telegram erreur pour chat_id=${chatId}:`, result);
+            return false;
         }
+        return true;
+    } catch (error) {
+        console.error(`❌ Échec Telegram pour chat_id=${chatId}:`, error.message || error);
+        return false;
     }
-
-    return success;
 }
 
 // Configuration Socket.io avec CORS
@@ -369,6 +361,7 @@ async function getDepotsEnCours() {
                 c.nom as client_nom,
                 c.prenom as client_prenom,
                 c.telephone as client_telephone,
+                c.telegram_chat_id as client_telegram_chat_id,
                 r.nom as race_nom,
                 cat.nom as categorie_nom,
                 cat.duree_incubation_jours,
@@ -563,6 +556,7 @@ async function checkAndSendAlertes() {
                             depot_id: depot.id,
                             depot_nom: depot.depot_nom,
                             client_nom: depot.client_nom,
+                            client_telegram_chat_id: depot.client_telegram_chat_id,
                             race_nom: depot.race_nom,
                             type_alerte: 'perso',
                             message: messagePerso,
@@ -609,6 +603,11 @@ async function checkAndSendAlertes() {
 
             const telegramAlerts = alertesEnvoyees.filter(a => a.type_alerte === 'perso');
             for (const alerte of telegramAlerts) {
+                if (!alerte.client_telegram_chat_id) {
+                    console.log(`    ⚠️ Pas de chat_id Telegram client pour le dépôt ${alerte.depot_nom}`);
+                    continue;
+                }
+
                 const telegramText = `<b>⏰ Alerte personnalisée</b>\n` +
                     `${alerte.message}\n\n` +
                     `<b>Dépôt</b> : ${alerte.depot_nom}\n` +
@@ -618,7 +617,7 @@ async function checkAndSendAlertes() {
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     })} UTC`;
 
-                await sendTelegramMessage(telegramText);
+                await sendTelegramMessage(alerte.client_telegram_chat_id, telegramText);
             }
         }
         

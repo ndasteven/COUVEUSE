@@ -25,8 +25,8 @@ class RaceAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('nom', 'prenom', 'telephone', 'email', 'est_actif')
-    search_fields = ('nom', 'prenom', 'telephone')
+    list_display = ('nom', 'prenom', 'telephone', 'telegram_chat_id', 'email', 'est_actif')
+    search_fields = ('nom', 'prenom', 'telephone', 'telegram_chat_id')
     list_filter = ('est_actif',)
     ordering = ('nom',)
 

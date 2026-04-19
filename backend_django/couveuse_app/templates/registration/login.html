@@ -1,0 +1,185 @@
+{% load static %}
+
+<!DOCTYPE html>
+
+<html lang="fr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Star Incubator</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/vendor/daisyui.min.css' %}">
+
+    <style>
+    body {
+        background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    }
+    .main{
+         width: 40%; margin: 40px auto; padding: 40px 30px;
+    }
+    /* Glow animé */
+    .bg-blur {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        background: #6366f1;
+        filter: blur(120px);
+        opacity: 0.2;
+        border-radius: 50%;
+        animation: move 10s infinite alternate ease-in-out;
+    }
+    .loginForm{
+      
+        z-index: 1;
+        width: 40%;
+        margin: 40px auto;
+    }
+    @media (max-width: 640px) {
+        .loginForm {
+            width: 90%;
+        }
+        .main{
+         width: 90%; margin: 40px auto; padding: 40px 30px;
+        }
+    }
+    .bg-blur-2 {
+        background: #ec4899;
+        top: 20%;
+        left: 60%;
+        animation-duration: 12s;
+    }
+
+    #submitBtn {
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    #submitBtn span {
+        position: relative;
+        z-index: 2;
+    }
+
+    #submitBtn::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: -40%;
+        width: 40%;
+        height: 120%;
+        background: rgba(255, 255, 255, 0.22);
+        transform: translateY(-50%) skewX(-25deg);
+        opacity: 0;
+    }
+
+    #submitBtn.active::after {
+        opacity: 1;
+        animation: wave 1.2s linear infinite;
+    }
+
+    @keyframes wave {
+        0% {
+            transform: translate3d(-100%, -50%, 0) skewX(-25deg);
+        }
+        100% {
+            transform: translate3d(220%, -50%, 0) skewX(-25deg);
+        }
+    }
+ </style>
+
+</head>
+
+<body class="min-h-screen flex items-center justify-center px-4">
+
+
+<!-- BACKGROUND EFFECT -->
+<div class="bg-blur top-0 left-0"></div>
+<div class="bg-blur bg-blur-2"></div>
+
+<div >
+    <div class="card bg-base-100 max-w-80 shadow-sm main" style="border: solid 1px black;">
+        <figure>
+            <img src="{% static 'assets/img/logo_couveuse.png' %}" style="height: 200px;" class="mx-auto h-2 mb-4">
+        </figure>
+        <div class="card card-glass shadow-2xl rounded-3xl p-8 border border-base-200">
+        <!-- ERROR -->
+        {% if form.errors %}
+            <div class="alert alert-error mb-5 text-sm">
+                <span>Identifiants incorrects</span>
+            </div>
+        {% endif %}
+
+        <!-- FORM -->
+        <form method="post" id="loginForm" class="space-y-5">
+            {% csrf_token %}
+
+            <!-- USER -->
+            <div class="form-control" style="margin-top: 10px;">
+                <label class="label">
+                    <span class="label-text">Nom d'utilisateur</span>
+                </label>
+                <input 
+                    type="text" 
+                    name="username"
+                    placeholder="admin"
+                    class="input input-bordered rounded-xl focus:ring-2 focus:ring-primary transition"
+                    required >
+
+            </div>
+
+            <!-- PASSWORD -->
+            <div class="form-control relative" style="margin-top: 15px; position: relative;">
+                <label class="label">
+                    <span class="label-text">Mot de passe</span>
+                </label>
+
+                <input 
+                    type="password" 
+                    name="password"
+                    id="password"
+                    placeholder="••••••••"
+                    class="input input-bordered rounded-xl w-full pr-12 focus:ring-2 focus:ring-primary transition"
+                    required >
+
+                <!-- TOGGLE -->
+                <button type="button" onclick="togglePassword()" 
+                    class="absolute right-3 top-[42px] text-gray-400 hover:text-primary" style="position: absolute; top: 45px; right: 12px;">
+                    👁️
+                </button>
+            </div>
+
+            <!-- BUTTON -->
+            <button id="submitBtn"
+                class="btn btn-primary w-full rounded-xl text-base transition hover:scale-[1.02]" style="width: 100%; margin-top: 20px;">
+
+                <span id="btnText">Se connecter</span>
+            </button>
+
+        </form>
+        <!-- FOOTER -->
+         <footer style="text-align: end;">
+            <div class="text-center mt-6 text-xs text-gray-400" style="margin-top: 50px;">
+            <small style="font-size: x-small;">Tous droits réservés &copy; 2023 Star Incubator @ndasteven05</small>
+            </div>
+         </footer>
+        
+
+    </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const input = document.getElementById('password');
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', function() {
+        document.getElementById('btnText').textContent = "Connexion...";
+        document.getElementById('submitBtn').classList.add('active');
+    });
+</script>
+
+</body>
+</html>

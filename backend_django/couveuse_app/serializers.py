@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Sum
 from .models import CategorieOeuf, Race, Client, Depot, Alerte, Palette, TransactionCaisse, Parametre
 
 
@@ -10,18 +11,25 @@ class PaletteSerializer(serializers.ModelSerializer):
     total_depots = serializers.SerializerMethodField()
     # Compter les dépôts en cours sur cette palette
     depots_en_cours = serializers.SerializerMethodField()
+    # Compter le nombre total d'œufs sur cette palette
+    total_oeufs = serializers.SerializerMethodField()
     # Lister TOUS les clients sur cette palette
     clients_sur_palette = serializers.SerializerMethodField()
 
     class Meta:
         model = Palette
-        fields = ['id', 'numero', 'created_at', 'total_depots', 'depots_en_cours', 'clients_sur_palette']
+        fields = ['id', 'numero', 'created_at', 'total_depots', 'depots_en_cours', 'total_oeufs', 'clients_sur_palette']
 
     def get_total_depots(self, obj):
         return obj.depots.count()
 
     def get_depots_en_cours(self, obj):
         return obj.depots.filter(statut='en_cours').count()
+
+    def get_total_oeufs(self, obj):
+        return obj.depots.filter(statut='en_cours').aggregate(
+            total=Sum('quantite_oeufs')
+        )['total'] or 0
 
     def get_clients_sur_palette(self, obj):
         # Inclure TOUS les dépôts, pas seulement en_cours
@@ -60,6 +68,9 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = '__all__'
+        extra_kwargs = {
+            'telegram_chat_id': {'required': False, 'allow_blank': True}
+        }
 
     def get_nb_depots(self, obj):
         return obj.depots.count()

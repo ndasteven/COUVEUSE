@@ -59,16 +59,52 @@ function stopServerClockPolling() {
 
 // Fonction pour récupérer le CSRF token depuis les cookies
 function getCSRFToken() {
-    const name = 'csrftoken';
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-        cookie = cookie.trim();
-        if (cookie.startsWith(name + '=')) {
-            return cookie.substring(name.length + 1);
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+        const token = meta.getAttribute('content');
+        if (token && token !== 'NOTPROVIDED') {
+            return token;
         }
     }
+
+    const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+    if (match) {
+        return decodeURIComponent(match[2]);
+    }
+
     return null;
 }
+
+// Override global fetch to ensure same-origin credentials and CSRF for state-changing requests
+const originalFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+    const opts = { ...init };
+    const request = input instanceof Request ? input : null;
+    const method = request
+        ? (opts.method || input.method || 'GET').toUpperCase()
+        : (opts.method || 'GET').toUpperCase();
+
+    opts.credentials = opts.credentials || 'same-origin';
+
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const headers = new Headers(opts.headers || (request ? request.headers : {}));
+        if (!headers.has('X-CSRFToken')) {
+            const token = getCSRFToken();
+            if (token) {
+                headers.set('X-CSRFToken', token);
+            } else {
+                console.warn('CSRF token missing for fetch', input, opts);
+            }
+        }
+        if (!headers.has('X-Requested-With')) {
+            headers.set('X-Requested-With', 'XMLHttpRequest');
+        }
+        opts.headers = headers;
+    }
+
+    return originalFetch(input, opts);
+};
+
 // État global
 let state = {
     page: 'dashboard',
@@ -84,7 +120,9 @@ let socket = null;
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', () => {
+    const token = getCSRFToken();
     console.log('🥚 Couveuse Manager initialisé');
+    console.log('🔐 CSRF token détecté:', token ? 'oui' : 'non', token ? token.slice(0, 8) + '...' : '');
     chargerPage('dashboard');
     chargerAlertes();
     demanderPermissionNotifications();
@@ -1374,7 +1412,7 @@ async function chargerSelectPalettes() {
     } else {
         select.innerHTML = '<option value="">-- Sélectionner une palette --</option>' + 
             palettes.map(p =>
-                `<option value="${p.id}">Palette ${p.numero} (${p.depots_en_cours} dépôt(s))</option>`
+                `<option value="${p.id}">Palette ${p.numero} (${p.depots_en_cours} dépôt(s), ${p.total_oeufs} œuf(s))</option>`
             ).join('');
     }
 }
@@ -1639,7 +1677,7 @@ async function chargerSelectModifPalettes() {
     const select = document.getElementById('modif-depot-palette');
     select.innerHTML = '<option value="">-- Sélectionner une palette --</option>' +
         palettes.map(p =>
-            `<option value="${p.id}">Palette ${p.numero} (${p.depots_en_cours} dépôt(s))</option>`
+            `<option value="${p.id}">Palette ${p.numero} (${p.depots_en_cours} dépôt(s), ${p.total_oeufs} œuf(s))</option>`
         ).join('');
 }
 
@@ -1978,6 +2016,10 @@ async function voirClient(id) {
                     </div>
                 </div>
                 <div>
+                    <p class="text-sm text-gray-500">Chat ID Telegram</p>
+                    <p class="font-semibold">${client.telegram_chat_id || '-'}</p>
+                </div>
+                <div>
                     <p class="text-sm text-gray-500">Email</p>
                     <p class="font-semibold">${client.email || '-'}</p>
                 </div>
@@ -2044,6 +2086,11 @@ async function modifierClient(id) {
                     </div>
                 </div>
                 <div class="form-control">
+                    <label class="label">Chat ID Telegram</label>
+                    <input type="text" id="modif-client-telegram-chat-id" class="input input-bordered" value="${client.telegram_chat_id || ''}">
+                    <p class="text-xs text-gray-500 mt-1">Facultatif, pour envoyer les alertes directement au client</p>
+                </div>
+                <div class="form-control">
                     <label class="label">Email</label>
                     <input type="email" id="modif-client-email" class="input input-bordered" value="${client.email || ''}">
                 </div>
@@ -2083,6 +2130,7 @@ async function enregistrerModificationClient(id) {
         prenom: document.getElementById('modif-client-prenom').value,
         telephone: document.getElementById('modif-client-telephone').value,
         telephone_2: document.getElementById('modif-client-telephone2').value,
+        telegram_chat_id: document.getElementById('modif-client-telegram-chat-id').value,
         email: document.getElementById('modif-client-email').value,
         adresse: document.getElementById('modif-client-adresse').value,
         est_actif: document.getElementById('modif-client-actif').checked
@@ -2729,6 +2777,11 @@ function ouvrirModalNouveauClient() {
                 </div>
             </div>
             <div class="form-control">
+                <label class="label">Chat ID Telegram</label>
+                <input type="text" id="client-telegram-chat-id" class="input input-bordered" placeholder="Ex: 123456789" />
+                <p class="text-xs text-gray-500 mt-1">Facultatif, pour envoyer les alertes directement au client</p>
+            </div>
+            <div class="form-control">
                 <label class="label">Email</label>
                 <input type="email" id="client-email" class="input input-bordered">
             </div>
@@ -2757,6 +2810,7 @@ async function enregistrerClient() {
         prenom: document.getElementById('client-prenom').value,
         telephone: document.getElementById('client-telephone').value,
         telephone_2: document.getElementById('client-telephone2').value,
+        telegram_chat_id: document.getElementById('client-telegram-chat-id').value,
         email: document.getElementById('client-email').value,
         adresse: document.getElementById('client-adresse').value
     };
@@ -3377,9 +3431,28 @@ async function marquerAlerteLue(id) {
     }
     
     try {
-        const response = await fetch(`${API_URL}/alertes/${id}/lire/`, { method: 'POST' });
-        const data = await response.json();
-        
+        const response = await fetch(`${API_URL}/alertes/${id}/lire/`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+            }
+        });
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (err) {
+            console.error('Réponse non JSON pour marquerAlerteLue:', response.status, response.statusText);
+            throw err;
+        }
+
+        if (!response.ok) {
+            console.error('Erreur API marquerAlerteLue:', response.status, data);
+            afficherNotification('❌ Impossible d\'arrêter l\'alerte. Voir console.', 'error');
+            return;
+        }
+
         if (data.success) {
             // Si le dépôt a été mis à jour (statut changé à "éclos")
             if (data.depot_updated) {

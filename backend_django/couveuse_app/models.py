@@ -78,6 +78,13 @@ class Client(models.Model):
     prenom = models.CharField(max_length=100, blank=True)
     telephone = models.CharField(max_length=20)
     telephone_2 = models.CharField(max_length=20, blank=True)
+    telegram_chat_id = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        verbose_name='Chat ID Telegram',
+        help_text='Chat ID Telegram du client, facultatif'
+    )
     email = models.EmailField(blank=True)
     adresse = models.TextField(blank=True)
     date_inscription = models.DateTimeField(auto_now_add=True)
