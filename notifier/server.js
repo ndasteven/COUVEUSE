@@ -188,7 +188,7 @@ async function getAlertesNonLues() {
     try {
         const [rows] = await db.query(`
             SELECT a.*,
-                   CONCAT(c.nom, ' - ', r.nom, ' (', p.quantite_oeufs, ' œufs)') as depot_nom,
+                   CONCAT(c.nom, ' ', IFNULL(c.prenom, ''), ' - ', r.nom, ' (', p.quantite_oeufs, ' œufs)') as depot_nom,
                    c.nom as client_nom,
                    c.prenom as client_prenom,
                    c.telephone as client_telephone,
@@ -232,7 +232,7 @@ async function mettreAJourStatutsDepasses() {
         const [depotsConcernes] = await db.query(`
             SELECT
                 p.id,
-                CONCAT(c.nom, ' - ', r.nom) as depot_nom,
+                CONCAT(c.nom, ' ', IFNULL(c.prenom, ''), ' - ', r.nom) as depot_nom,
                 p.quantite_oeufs,
                 p.statut,
                 p.date_eclosion_prevue,
@@ -353,7 +353,7 @@ async function getDepotsEnCours() {
         const [rows] = await db.query(`
             SELECT
                 p.id,
-                CONCAT(c.nom, ' - ', r.nom) as depot_nom,
+                CONCAT(c.nom, ' ', IFNULL(c.prenom, ''), ' - ', r.nom) as depot_nom,
                 p.quantite_oeufs,
                 p.statut,
                 p.date_eclosion_prevue,

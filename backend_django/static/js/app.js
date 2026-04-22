@@ -125,6 +125,20 @@ let state = {
     categories: []
 };
 
+// Pagination pour le tableau de bord
+let dashboardDepotsPagination = {
+    page: 1,
+    lignesParPage: 10,
+    total: 0
+};
+
+// Pagination pour les clients
+let clientsPagination = {
+    page: 1,
+    lignesParPage: 10,
+    total: 0
+};
+
 // Socket.io connection
 let socket = null;
 
@@ -282,6 +296,7 @@ function connecterWebSocket() {
 // Charger une page
 async function chargerPage(page) {
     state.page = page;
+    if (page === 'dashboard') dashboardDepotsPagination.page = 1;
     const content = document.getElementById('app-content');
 
     switch(page) {
@@ -303,6 +318,7 @@ async function chargerPage(page) {
             break;
         case 'clients':
             content.innerHTML = await getClientsHTML();
+            clientsPagination.page = 1;
             await chargerClients();
             break;
         case 'races':
@@ -390,7 +406,18 @@ async function getDashboardHTML() {
             <!-- Dépôts récents -->
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
-                    <h3 class="card-title">📦 Dépôts récents</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="card-title">📦 Dépôts récents</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs opacity-70">Afficher :</span>
+                            <select id="dashboard-lignes-par-page" class="select select-bordered select-xs" onchange="changerLignesParPageDashboard()">
+                                <option value="5" ${dashboardDepotsPagination.lignesParPage === 5 ? 'selected' : ''}>5</option>
+                                <option value="10" ${dashboardDepotsPagination.lignesParPage === 10 ? 'selected' : ''}>10</option>
+                                <option value="25" ${dashboardDepotsPagination.lignesParPage === 25 ? 'selected' : ''}>25</option>
+                                <option value="50" ${dashboardDepotsPagination.lignesParPage === 50 ? 'selected' : ''}>50</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="table">
                             <thead>
@@ -405,6 +432,23 @@ async function getDashboardHTML() {
                             </thead>
                             <tbody id="dashboard-depots"></tbody>
                         </table>
+                    </div>
+                    <!-- Pagination Dashboard -->
+                    <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
+                        <div id="dashboard-pagination-info" class="text-sm text-gray-500"></div>
+                        <div class="join">
+                            <button class="join-item btn btn-sm" onclick="changerPageDashboard(-1)" title="Précédent">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <button id="dashboard-current-page" class="join-item btn btn-sm btn-active">1</button>
+                            <button class="join-item btn btn-sm" onclick="changerPageDashboard(1)" title="Suivant">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -429,21 +473,71 @@ async function chargerStatsDashboard() {
         document.getElementById('stat-eclosions').textContent = eclosionsAujourdhui;
         document.getElementById('stat-alertes').textContent = state.alertes.length;
         
-        // Remplir le tableau des dépôts récents
-        const tbody = document.getElementById('dashboard-depots');
-        tbody.innerHTML = depots.slice(0, 5).map(depot => `
-            <tr>
-                <td>${depot.client_nom}</td>
-                <td>${depot.race_nom}</td>
-                <td>${depot.quantite_oeufs}</td>
-                <td>${formatDate(depot.date_heure_depôt)}</td>
-                <td>${getJoursRestantsBadge(depot)}</td>
-                <td><span class="badge badge-${getStatutColor(depot.statut)}">${depot.statut}</span></td>
-            </tr>
-        `).join('');
+        afficherDepotsDashboard();
         
     } catch (error) {
         console.error('Erreur chargement stats:', error);
+    }
+}
+
+function afficherDepotsDashboard() {
+    const depots = state.depots || [];
+    
+    // Trier par date de dépôt décroissante (plus récents d'abord)
+    let sortedDepots = [...depots];
+    sortedDepots.sort((a, b) => new Date(b.date_heure_depôt) - new Date(a.date_heure_depôt));
+    
+    const total = sortedDepots.length;
+    dashboardDepotsPagination.total = total;
+    
+    const start = (dashboardDepotsPagination.page - 1) * dashboardDepotsPagination.lignesParPage;
+    const end = start + dashboardDepotsPagination.lignesParPage;
+    const depotsPagines = sortedDepots.slice(start, end);
+    
+    const tbody = document.getElementById('dashboard-depots');
+    if (tbody) {
+        if (depotsPagines.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500">Aucun dépôt</td></tr>';
+        } else {
+            tbody.innerHTML = depotsPagines.map(depot => `
+                <tr>
+                    <td>${depot.client_nom} ${depot.client_prenom || ''}</td>
+                    <td>${depot.race_nom} <span class="text-xs opacity-70">(${depot.categorie_nom})</span></td>
+                    <td>${depot.quantite_oeufs}</td>
+                    <td>${formatDate(depot.date_heure_depôt)}</td>
+                    <td>${getJoursRestantsBadge(depot)}</td>
+                    <td><span class="badge badge-${getStatutColor(depot.statut)}">${depot.statut}</span></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    const info = document.getElementById('dashboard-pagination-info');
+    const totalPages = Math.ceil(total / dashboardDepotsPagination.lignesParPage) || 1;
+    if (info) {
+        info.textContent = `Affichage ${Math.min(start + 1, total)}-${Math.min(end, total)} sur ${total}`;
+    }
+    const currentBtn = document.getElementById('dashboard-current-page');
+    if (currentBtn) {
+        currentBtn.textContent = `${dashboardDepotsPagination.page} / ${totalPages}`;
+    }
+}
+
+function changerLignesParPageDashboard() {
+    const select = document.getElementById('dashboard-lignes-par-page');
+    if (select) {
+        dashboardDepotsPagination.lignesParPage = parseInt(select.value);
+        dashboardDepotsPagination.page = 1;
+        afficherDepotsDashboard();
+    }
+}
+
+function changerPageDashboard(delta) {
+    const totalPages = Math.ceil(dashboardDepotsPagination.total / dashboardDepotsPagination.lignesParPage) || 1;
+    const newPage = dashboardDepotsPagination.page + delta;
+    if (newPage >= 1 && newPage <= totalPages) {
+        dashboardDepotsPagination.page = newPage;
+        afficherDepotsDashboard();
     }
 }
 
@@ -672,7 +766,7 @@ function afficherEclosionsDuMois() {
         return `
             <div class="flex justify-between items-center p-3 bg-base-200 rounded hover:bg-base-300 transition-colors">
                 <div>
-                    <p class="font-medium">${d.client_nom} - ${d.race_nom}</p>
+                    <p class="font-medium">${d.client_nom} ${d.client_prenom || ''} - ${d.race_nom} <span class="text-xs opacity-70">(${d.categorie_nom})</span></p>
                     <p class="text-sm text-gray-500">${d.quantite_oeufs} œufs</p>
                 </div>
                 <div class="text-right">
@@ -899,18 +993,27 @@ async function getDepotsHTML() {
                     <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
                         <div id="pagination-info" class="text-sm text-gray-500"></div>
                         <div class="join">
-                            <button id="btn-premiere-page" class="join-item btn btn-sm" onclick="allerPage(1)">
-                                <i class="fas fa-angle-double-left"></i>
+                            <button id="btn-premiere-page" class="join-item btn btn-sm" onclick="allerPage(1)" title="Début">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+                                </svg>
                             </button>
-                            <button id="btn-page-precedente" class="join-item btn btn-sm" onclick="changerPage(-1)">
-                                <i class="fas fa-angle-left"></i>
+                            <button id="btn-page-precedente" class="join-item btn btn-sm" onclick="changerPage(-1)" title="Précédent">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
                             </button>
                             <span id="pagination-pages" class="join-item btn btn-sm btn-active"></span>
-                            <button id="btn-page-suivante" class="join-item btn btn-sm" onclick="changerPage(1)">
-                                <i class="fas fa-angle-right"></i>
+                            <button id="btn-page-suivante" class="join-item btn btn-sm" onclick="changerPage(1)" title="Suivant">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
                             </button>
-                            <button id="btn-derniere-page" class="join-item btn btn-sm" onclick="allerPage(-1)">
-                                <i class="fas fa-angle-double-right"></i>
+                            <button id="btn-derniere-page" class="join-item btn btn-sm" onclick="allerPage(-1)" title="Fin">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" />
+                              </svg>
+
                             </button>
                         </div>
                     </div>
@@ -1027,27 +1130,45 @@ function updatePaginationControls(totalItems) {
     const currentPage = depotsPagination.page;
     
     // Info pagination
-    const start = Math.min((currentPage - 1) * depotsPagination.lignesParPage + 1, totalItems);
-    const end = Math.min(currentPage * depotsPagination.lignesParPage, totalItems);
-    
-    document.getElementById('pagination-info').textContent = 
-        `Affichage ${start}-${end} sur ${totalItems} dépôt(s) — Page ${currentPage}/${totalPages || 1}`;
+    const infoEl = document.getElementById('pagination-info');
+    if (infoEl) {
+        const start = Math.min((currentPage - 1) * depotsPagination.lignesParPage + 1, totalItems);
+        const end = Math.min(currentPage * depotsPagination.lignesParPage, totalItems);
+        infoEl.textContent = 
+            `Affichage ${start}-${end} sur ${totalItems} dépôt(s) — Page ${currentPage}/${totalPages || 1}`;
+    }
     
     // Boutons
-    document.getElementById('btn-premiere-page').disabled = currentPage === 1;
-    document.getElementById('btn-page-precedente').disabled = currentPage === 1;
-    document.getElementById('btn-page-suivante').disabled = currentPage >= totalPages;
-    document.getElementById('btn-derniere-page').disabled = currentPage >= totalPages;
+    const btnPremiere = document.getElementById('btn-premiere-page');
+    const btnPrecedente = document.getElementById('btn-page-precedente');
+    const btnSuivante = document.getElementById('btn-page-suivante');
+    const btnDerniere = document.getElementById('btn-derniere-page');
+
+    if (btnPremiere) {
+        btnPremiere.disabled = currentPage === 1;
+    }
+    if (btnPrecedente) {
+        btnPrecedente.disabled = currentPage === 1;
+    }
+    if (btnSuivante) {
+        btnSuivante.disabled = currentPage >= totalPages;
+    }
+    if (btnDerniere) {
+        btnDerniere.disabled = currentPage >= totalPages;
+    }
     
     // Numéro de page
-    document.getElementById('pagination-pages').textContent = `${currentPage} / ${totalPages || 1}`;
+    const pagesEl = document.getElementById('pagination-pages');
+    if (pagesEl) {
+        pagesEl.textContent = `${currentPage} / ${totalPages || 1}`;
+    }
 }
 
 function afficherDepots(depots) {
     const tbody = document.getElementById('depots-table');
     if (!depots || depots.length === 0) {
         tbody.innerHTML = '<tr><td colspan="12" class="text-center text-gray-500">Aucun dépôt trouvé</td></tr>';
-        updatePaginationControls(0);
+        updatePaginationControls(0); // Toujours mettre à jour les contrôles, même s'il n'y a pas de dépôts
         return;
     }
 
@@ -1070,9 +1191,9 @@ function afficherDepots(depots) {
 
         return `
             <tr>
-                <td>${depot.client_nom}</td>
+                <td>${depot.client_nom} ${depot.client_prenom || ''}</td>
                 <td class="font-mono">${telephone}</td>
-                <td>${depot.race_nom}</td>
+                <td>${depot.race_nom} <span class="text-xs opacity-70">(${depot.categorie_nom})</span></td>
                 <td>${depot.palette_numero ? `<span class="badge badge-primary">P${depot.palette_numero}</span>` : '-'}</td>
                 <td>${depot.quantite_oeufs}</td>
                 <td>${depot.prix_unitaire} FCFA</td>
@@ -2308,17 +2429,25 @@ async function getPalettesHTML() {
                         <div id="pagination-info-palettes" class="text-sm text-gray-500"></div>
                         <div class="join">
                             <button id="btn-premiere-page-palettes" class="join-item btn btn-sm" onclick="allerPagePalette(1)">
-                                <i class="fas fa-angle-double-left"></i>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+                                </svg>
                             </button>
                             <button id="btn-page-precedente-palettes" class="join-item btn btn-sm" onclick="changerPagePalette(-1)">
-                                <i class="fas fa-angle-left"></i>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
                             </button>
                             <span id="pagination-pages-palettes" class="join-item btn btn-sm btn-active"></span>
                             <button id="btn-page-suivante-palettes" class="join-item btn btn-sm" onclick="changerPagePalette(1)">
-                                <i class="fas fa-angle-right"></i>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
                             </button>
                             <button id="btn-derniere-page-palettes" class="join-item btn btn-sm" onclick="allerPagePalette(-1)">
-                                <i class="fas fa-angle-double-right"></i>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15L5.25 12l7.5-7.5" />
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -2417,10 +2546,10 @@ function afficherPalettesFiltrees() {
                 const statusColor = c.statut === 'en_cours' ? 'badge-warning' : 
                                     c.statut === 'eclos' ? 'badge-success' : 
                                     c.statut === 'echec' ? 'badge-error' : 'badge-ghost';
-                return `<span class="badge ${statusColor} badge-sm mr-1 mb-1">${c.client_nom} (${c.quantite_oeufs})</span>`;
+                return `<span class="badge ${statusColor} badge-sm mr-1 mb-1">${c.client_nom} ${c.client_prenom || ''} (${c.quantite_oeufs})</span>`;
             }).join(' ')
             : '-';
-        const races = [...new Set(clients.map(c => c.race_nom))].join(', ') || '-';
+        const races = [...new Set(clients.map(c => `${c.race_nom} (${c.categorie_nom})`))].join(', ') || '-';
         const totalOeufs = clients.reduce((sum, c) => sum + c.quantite_oeufs, 0);
 
         return `
@@ -2637,7 +2766,7 @@ async function voirPalette(id) {
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <h4 class="font-bold">${c.client_nom} ${c.client_prenom || ''}</h4>
-                                        <p class="text-sm text-gray-500">${c.race_nom} — ${c.quantite_oeufs} œufs</p>
+                                        <p class="text-sm text-gray-500">${c.race_nom} (${c.categorie_nom}) — ${c.quantite_oeufs} œufs</p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-sm text-gray-500">Éclosion prévue</p>
@@ -2708,6 +2837,19 @@ async function getClientsHTML() {
             
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
+                    <!-- Contrôles -->
+                    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                        <div class="flex items-center gap-2">
+                             <span class="text-sm">Afficher :</span>
+                             <select id="lignes-par-page-clients" class="select select-bordered select-sm" onchange="changerLignesParPageClient()">
+                                 <option value="5">5 lignes</option>
+                                 <option value="10" selected>10 lignes</option>
+                                 <option value="25">25 lignes</option>
+                                 <option value="50">50 lignes</option>
+                             </select>
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto">
                         <table class="table">
                             <thead>
@@ -2724,6 +2866,34 @@ async function getClientsHTML() {
                             <tbody id="clients-table"></tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination -->
+                    <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
+                        <div id="pagination-info-clients" class="text-sm text-gray-500"></div>
+                        <div class="join">
+                            <button id="btn-premiere-page-clients" class="join-item btn btn-sm" onclick="allerPageClient(1)" title="Début">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <button id="btn-page-precedente-clients" class="join-item btn btn-sm" onclick="changerPageClient(-1)" title="Précédent">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <span id="pagination-pages-clients" class="join-item btn btn-sm btn-active"></span>
+                            <button id="btn-page-suivante-clients" class="join-item btn btn-sm" onclick="changerPageClient(1)" title="Suivant">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                            <button id="btn-derniere-page-clients" class="join-item btn btn-sm" onclick="allerPageClient(-1)" title="Fin">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15L5.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2731,12 +2901,28 @@ async function getClientsHTML() {
 }
 
 async function chargerClients() {
-    const response = await fetch(`${API_URL}/clients/`);
-    const clients = await response.json();
-    state.clients = clients;
-    
+    try {
+        const response = await fetch(`${API_URL}/clients/`);
+        const clients = await response.json();
+        state.clients = clients;
+        afficherClients();
+    } catch (error) {
+        console.error('Erreur chargement clients:', error);
+    }
+}
+
+function afficherClients() {
     const tbody = document.getElementById('clients-table');
-    tbody.innerHTML = clients.map(client => `
+    const clients = state.clients || [];
+    
+    clientsPagination.total = clients.length;
+    const start = (clientsPagination.page - 1) * clientsPagination.lignesParPage;
+    const end = start + clientsPagination.lignesParPage;
+    const clientsPagines = clients.slice(start, end);
+    
+    updatePaginationControlsClients(clients.length);
+
+    tbody.innerHTML = clientsPagines.map(client => `
         <tr>
             <td>${client.nom}</td>
             <td>${client.prenom}</td>
@@ -2757,6 +2943,49 @@ async function chargerClients() {
             </td>
         </tr>
     `).join('');
+}
+
+function updatePaginationControlsClients(totalItems) {
+    clientsPagination.total = totalItems;
+    const totalPages = Math.ceil(totalItems / clientsPagination.lignesParPage);
+    const currentPage = clientsPagination.page;
+    const start = Math.min((currentPage - 1) * clientsPagination.lignesParPage + 1, totalItems);
+    const end = Math.min(currentPage * clientsPagination.lignesParPage, totalItems);
+    
+    const infoEl = document.getElementById('pagination-info-clients');
+    if (infoEl) infoEl.textContent = `Affichage ${start}-${end} sur ${totalItems} client(s) — Page ${currentPage}/${totalPages || 1}`;
+    
+    const btnPremiere = document.getElementById('btn-premiere-page-clients');
+    const btnPrecedente = document.getElementById('btn-page-precedente-clients');
+    const btnSuivante = document.getElementById('btn-page-suivante-clients');
+    const btnDerniere = document.getElementById('btn-derniere-page-clients');
+    
+    if (btnPremiere) btnPremiere.disabled = currentPage === 1;
+    if (btnPrecedente) btnPrecedente.disabled = currentPage === 1;
+    if (btnSuivante) btnSuivante.disabled = currentPage >= totalPages;
+    if (btnDerniere) btnDerniere.disabled = currentPage >= totalPages;
+    
+    const pagesEl = document.getElementById('pagination-pages-clients');
+    if (pagesEl) pagesEl.textContent = `${currentPage} / ${totalPages || 1}`;
+}
+
+function changerPageClient(delta) {
+    const totalPages = Math.ceil(clientsPagination.total / clientsPagination.lignesParPage);
+    clientsPagination.page = Math.max(1, Math.min(totalPages, clientsPagination.page + delta));
+    afficherClients();
+}
+
+function allerPageClient(page) {
+    const totalPages = Math.ceil(clientsPagination.total / clientsPagination.lignesParPage);
+    if (page === -1) page = totalPages;
+    clientsPagination.page = Math.max(1, Math.min(totalPages, page));
+    afficherClients();
+}
+
+function changerLignesParPageClient() {
+    clientsPagination.lignesParPage = parseInt(document.getElementById('lignes-par-page-clients').value);
+    clientsPagination.page = 1;
+    afficherClients();
 }
 
 function ouvrirModalNouveauClient() {
@@ -2901,7 +3130,7 @@ async function chargerRaces() {
                                 <span class="text-xs text-gray-500 ml-2">${race.description || ''}</span>
                             </div>
                             <div class="space-x-1">
-                                <button onclick="modifierRace(${race.id}, '${race.nom}', '${race.description || ''}')" class="btn btn-ghost btn-xs">
+                                <button onclick="modifierRace(${race.id})" class="btn btn-ghost btn-xs">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button onclick="supprimerRace(${race.id})" class="btn btn-ghost btn-xs text-error">
@@ -3176,7 +3405,13 @@ async function supprimerCategorie(id) {
 
 // ==================== MODIFIER RACE ====================
 
-async function modifierRace(id, nom, description) {
+async function modifierRace(id) {
+    const race = state.races.find(r => r.id === id);
+    if (!race) return;
+    
+    const nom = race.nom;
+    const description = race.description || '';
+
     const modal = document.getElementById('modal-universel');
     const content = document.getElementById('modal-content');
 
@@ -3214,7 +3449,7 @@ async function enregistrerModificationRace(id) {
 
     try {
         const response = await fetch(`${API_URL}/races/${id}/`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });

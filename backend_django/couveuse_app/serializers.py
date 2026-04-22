@@ -40,6 +40,7 @@ class PaletteSerializer(serializers.ModelSerializer):
                 'client_nom': d.client.nom,
                 'client_prenom': d.client.prenom,
                 'race_nom': d.race.nom,
+                'categorie_nom': d.race.categorie.nom,
                 'quantite_oeufs': d.quantite_oeufs,
                 'date_eclosion_prevue': str(d.date_eclosion_prevue) if d.date_eclosion_prevue else None,
                 'statut': d.statut
