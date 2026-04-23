@@ -315,6 +315,26 @@ def caisse_dashboard(request):
         nb_depots=Count('id')
     )
     
+    # === REVENUS PAR CATÉGORIE D'OISEAU ===
+    repartition_oiseaux = list(Depot.objects.filter(
+        date_heure_depôt__date__gte=date_debut,
+        date_heure_depôt__date__lte=date_fin
+    ).values('race__categorie__nom').annotate(
+        total=Sum('montant_percu'),
+        oeufs=Sum('quantite_oeufs'),
+        count=Count('id')
+    ).order_by('-total'))
+
+    # === REVENUS PAR RACE ===
+    repartition_races = list(Depot.objects.filter(
+        date_heure_depôt__date__gte=date_debut,
+        date_heure_depôt__date__lte=date_fin
+    ).values('race__nom', 'race__categorie__nom').annotate(
+        total=Sum('montant_percu'),
+        oeufs=Sum('quantite_oeufs'),
+        count=Count('id')
+    ).order_by('-total'))
+
     # === RÉPARTITION PAR CATÉGORIE ===
     repartition_entrees = list(transactions.filter(type_transaction='entree').values('categorie').annotate(
         total=Sum('montant'),
@@ -367,6 +387,10 @@ def caisse_dashboard(request):
             'entrees': list(repartition_entrees),
             'sorties': list(repartition_sorties),
         },
+
+        # Performance par oiseau/race
+        'repartition_oiseaux': repartition_oiseaux,
+        'repartition_races': repartition_races,
         
         # Top clients
         'top_clients': list(top_clients),

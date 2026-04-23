@@ -132,6 +132,13 @@ let dashboardDepotsPagination = {
     total: 0
 };
 
+// Pagination pour le calendrier
+let calendrierEclosionsPagination = {
+    page: 1,
+    lignesParPage: 5,
+    total: 0
+};
+
 // Pagination pour les clients
 let clientsPagination = {
     page: 1,
@@ -605,8 +612,37 @@ async function getCalendrierHTML() {
             <!-- Détails des éclosions du mois -->
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
-                    <h3 class="card-title">🥚 Éclosions du mois</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="card-title">🥚 Éclosions du mois</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs opacity-70">Afficher :</span>
+                            <select id="calendrier-lignes-par-page" class="select select-bordered select-xs" onchange="changerLignesParPageCalendrier()">
+                                <option value="5" ${calendrierEclosionsPagination.lignesParPage === 5 ? 'selected' : ''}>5</option>
+                                <option value="10" ${calendrierEclosionsPagination.lignesParPage === 10 ? 'selected' : ''}>10</option>
+                                <option value="25" ${calendrierEclosionsPagination.lignesParPage === 25 ? 'selected' : ''}>25</option>
+                                <option value="50" ${calendrierEclosionsPagination.lignesParPage === 50 ? 'selected' : ''}>50</option>
+                            </select>
+                        </div>
+                    </div>
                     <div id="calendrier-eclosions" class="space-y-2"></div>
+                    
+                    <!-- Pagination Calendrier -->
+                    <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
+                        <div id="calendrier-pagination-info" class="text-xs md:text-sm text-gray-500"></div>
+                        <div class="join shadow-sm border border-base-300" id="calendrier-pagination-controls">
+                            <button class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPageCalendrier(-1)" title="Précédent">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                </svg>
+                            </button>
+                            <span id="calendrier-current-page" class="join-item btn btn-xs md:btn-sm btn-primary no-animation font-bold flex items-center justify-center">1</span>
+                            <button class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPageCalendrier(1)" title="Suivant">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -620,6 +656,7 @@ async function chargerCalendrier() {
     try {
         const response = await fetch(`${API_URL}/depots/`);
         calendrierDepots = await response.json();
+        calendrierEclosionsPagination.page = 1;
         afficherCalendrier();
         afficherEclosionsDuMois();
     } catch (error) {
@@ -758,15 +795,23 @@ function afficherEclosionsDuMois() {
     // Trier par date
     eclosionsDuMois.sort((a, b) => new Date(a.date_eclosion_prevue) - new Date(b.date_eclosion_prevue));
     
+    calendrierEclosionsPagination.total = eclosionsDuMois.length;
+    
     if (eclosionsDuMois.length === 0) {
         container.innerHTML = '<p class="text-gray-500 italic">Aucune éclosion prévue ce mois-ci</p>';
+        updatePaginationControlsCalendrier(0);
         return;
     }
+    
+    // Pagination slicing
+    const start = (calendrierEclosionsPagination.page - 1) * calendrierEclosionsPagination.lignesParPage;
+    const end = start + calendrierEclosionsPagination.lignesParPage;
+    const itemsPagines = eclosionsDuMois.slice(start, end);
     
     const aujourdHui = new Date();
     aujourdHui.setHours(0, 0, 0, 0);
     
-    container.innerHTML = eclosionsDuMois.map(d => {
+    container.innerHTML = itemsPagines.map(d => {
         const dateEclo = new Date(d.date_eclosion_prevue);
         const estPasse = dateEclo < aujourdHui;
         const estAujourdhui = dateEclo.getTime() === aujourdHui.getTime();
@@ -787,12 +832,50 @@ function afficherEclosionsDuMois() {
             </div>
         `;
     }).join('');
+
+    updatePaginationControlsCalendrier(eclosionsDuMois.length);
 }
 
 function changerMois(delta) {
     calendrierDateActuelle.setMonth(calendrierDateActuelle.getMonth() + delta);
+    calendrierEclosionsPagination.page = 1;
     afficherCalendrier();
     afficherEclosionsDuMois();
+}
+
+function updatePaginationControlsCalendrier(totalItems) {
+    const totalPages = Math.ceil(totalItems / calendrierEclosionsPagination.lignesParPage) || 1;
+    const currentPage = calendrierEclosionsPagination.page;
+    
+    const infoEl = document.getElementById('calendrier-pagination-info');
+    if (infoEl) {
+        const start = Math.min((currentPage - 1) * calendrierEclosionsPagination.lignesParPage + 1, totalItems);
+        const end = Math.min(currentPage * calendrierEclosionsPagination.lignesParPage, totalItems);
+        infoEl.textContent = totalItems > 0 ? `Affichage ${start}-${end} sur ${totalItems}` : '';
+    }
+    
+    const currentBtn = document.getElementById('calendrier-current-page');
+    if (currentBtn) {
+        currentBtn.textContent = `${currentPage} / ${totalPages}`;
+    }
+}
+
+function changerPageCalendrier(delta) {
+    const totalPages = Math.ceil(calendrierEclosionsPagination.total / calendrierEclosionsPagination.lignesParPage) || 1;
+    const newPage = calendrierEclosionsPagination.page + delta;
+    if (newPage >= 1 && newPage <= totalPages) {
+        calendrierEclosionsPagination.page = newPage;
+        afficherEclosionsDuMois();
+    }
+}
+
+function changerLignesParPageCalendrier() {
+    const select = document.getElementById('calendrier-lignes-par-page');
+    if (select) {
+        calendrierEclosionsPagination.lignesParPage = parseInt(select.value);
+        calendrierEclosionsPagination.page = 1;
+        afficherEclosionsDuMois();
+    }
 }
 
 // ==================== DÉPÔTS ====================
@@ -4062,6 +4145,30 @@ async function getCaisseHTML() {
                 </div>
             </div>
             
+            <!-- Performance par Race et Catégorie -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h3 class="card-title">🍗 Revenus par Catégorie</h3>
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm">
+                                <tbody id="caisse-repartition-oiseaux"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <h3 class="card-title">🧬 Revenus par Race</h3>
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm">
+                                <tbody id="caisse-repartition-races"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Transactions récentes -->
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
@@ -4130,6 +4237,38 @@ async function chargerCaisse() {
         afficherGraphiqueEvolution(data.evolution);
         afficherGraphiqueRepartition(data.repartition);
         
+        // Afficher la répartition par catégorie d'oiseau
+        const oiseauxTbody = document.getElementById('caisse-repartition-oiseaux');
+        if (oiseauxTbody) {
+            oiseauxTbody.innerHTML = data.repartition_oiseaux.length ? data.repartition_oiseaux.map(item => `
+                <tr>
+                    <td class="font-bold">${item.race__categorie__nom}</td>
+                    <td class="text-right">${item.oeufs} œufs</td>
+                    <td class="text-right font-semibold text-success">${formatMontant(item.total)}</td>
+                </tr>
+            `).join('') : '<tr><td colspan="3" class="text-center opacity-50">Aucune donnée</td></tr>';
+        }
+
+        // Afficher la répartition par race
+        const racesTbody = document.getElementById('caisse-repartition-races');
+        if (racesTbody) {
+            racesTbody.innerHTML = data.repartition_races.length ? data.repartition_races.map(item => {
+                // Calculer le pourcentage de revenus pour la barre de progression (visuel)
+                const totalRevenusDepots = data.depots.total_montant || 1;
+                const percent = Math.round((item.total / totalRevenusDepots) * 100);
+                return `
+                    <tr>
+                        <td>
+                            <div class="font-bold">${item.race__nom}</div>
+                            <div class="text-xs opacity-50">${item.race__categorie__nom}</div>
+                        </td>
+                        <td class="text-right font-semibold">${formatMontant(item.total)}</td>
+                        <td class="w-24"><progress class="progress progress-primary w-20" value="${percent}" max="100"></progress></td>
+                    </tr>
+                `;
+            }).join('') : '<tr><td colspan="3" class="text-center opacity-50">Aucune donnée</td></tr>';
+        }
+
         // Charger les transactions
         await chargerTransactions();
         
