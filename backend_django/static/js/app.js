@@ -344,6 +344,17 @@ async function chargerPage(page) {
     document.getElementById('sidebar-drawer').checked = false;
 }
 
+// Après le chargement du HTML du dashboard, attacher les écouteurs d'événements
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#dashboard-pagination-controls')) {
+        const button = e.target.closest('button');
+        if (button && button.dataset.action === 'prev') {
+            changerPageDashboard(-1);
+        } else if (button && button.dataset.action === 'next') {
+            changerPageDashboard(1);
+        }
+    }
+});
 // ==================== DASHBOARD ====================
 
 async function getDashboardHTML() {
@@ -351,7 +362,7 @@ async function getDashboardHTML() {
         <div class="space-y-6">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold">📊 Tableau de bord</h2>
-                <button onclick="chargerPage('depots')" class="btn btn-primary">
+                <button onclick="chargerPage('depots')" class="btn btn-primary btn-sm py-0">
                     <i class="fas fa-plus"></i> Nouveau dépôt
                 </button>
             </div>
@@ -435,15 +446,15 @@ async function getDashboardHTML() {
                     </div>
                     <!-- Pagination Dashboard -->
                     <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
-                        <div id="dashboard-pagination-info" class="text-sm text-gray-500"></div>
-                        <div class="join">
-                            <button class="join-item btn btn-sm" onclick="changerPageDashboard(-1)" title="Précédent">
+                        <div id="dashboard-pagination-info" class="text-xs md:text-sm text-gray-500"></div>
+                        <div class="join shadow-sm border border-base-300" id="dashboard-pagination-controls">
+                            <button class="join-item btn btn-xs md:btn-sm btn-neutral" data-action="prev" title="Précédent">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <button id="dashboard-current-page" class="join-item btn btn-sm btn-active">1</button>
-                            <button class="join-item btn btn-sm" onclick="changerPageDashboard(1)" title="Suivant">
+                            <button id="dashboard-current-page" class="join-item btn btn-xs md:btn-sm btn-primary no-animation font-bold flex items-center justify-center">1</button>
+                            <button class="join-item btn btn-xs md:btn-sm btn-neutral" data-action="next" title="Suivant">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
@@ -799,7 +810,7 @@ async function getDepotsHTML() {
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold">📦 Dépôts</h2>
-                <button onclick="ouvrirModalNouveauDepot()" class="btn btn-primary">
+                <button onclick="ouvrirModalNouveauDepot()" class="btn btn-primary btn-sm py-0">
                     <i class="fas fa-plus"></i> Nouveau dépôt
                 </button>
             </div>
@@ -807,11 +818,15 @@ async function getDepotsHTML() {
             <!-- Filtre multi-critères -->
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="card-title text-lg">
+                    <div class="flex justify-between items-center cursor-pointer" onclick="toggleFiltresAvances()">
+                        <h3 class="card-title text-lg select-none">
                             <i class="fas fa-filter"></i> Filtres avancés
                         </h3>
-                        <div class="flex gap-2">
+                        <i id="icon-toggle-filtres" class="fas fa-chevron-down transition-transform duration-300"></i>
+                    </div>
+                    
+                    <div id="container-filtres-avances" class="hidden mt-4 space-y-4">
+                        <div class="flex justify-end gap-2">
                             <button onclick="reinitialiserFiltres()" class="btn btn-sm btn-ghost">
                                 <i class="fas fa-undo"></i> Réinitialiser
                             </button>
@@ -819,9 +834,8 @@ async function getDepotsHTML() {
                                 <i class="fas fa-search"></i> Rechercher
                             </button>
                         </div>
-                    </div>
-                    
-                    <!-- Ligne 1 : Recherche texte + Statut -->
+
+                        <!-- Ligne 1 : Recherche texte + Statut -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="form-control">
                             <label class="label">
@@ -830,8 +844,8 @@ async function getDepotsHTML() {
                             <input 
                                 type="text" 
                                 id="filtre-recherche" 
-                                class="input input-bordered input-sm" 
-                                placeholder="Client, téléphone, remarque..."
+                                class="input input-bordered input-sm placeholder:text-slate-600 placeholder:opacity-100" 
+                                placeholder="Client, téléphone, race..."
                                 oninput="appliquerFiltres()"
                             >
                         </div>
@@ -839,7 +853,7 @@ async function getDepotsHTML() {
                             <label class="label">
                                 <span class="label-text">📊 Statut</span>
                             </label>
-                            <select id="filtre-statut" class="select select-bordered select-sm" onchange="appliquerFiltres()">
+                            <select id="filtre-statut" class="select select-bordered select-sm text-slate-600" style="padding-top: 0px" onchange="appliquerFiltres()">
                                 <option value="">Tous les statuts</option>
                                 <option value="en_cours">En incubation</option>
                                 <option value="eclos">Éclos</option>
@@ -851,7 +865,7 @@ async function getDepotsHTML() {
                             <label class="label">
                                 <span class="label-text">🧬 Race</span>
                             </label>
-                            <select id="filtre-race" class="select select-bordered select-sm" onchange="appliquerFiltres()">
+                            <select id="filtre-race" class="select select-bordered select-sm text-slate-600" style="padding-top: 0px" onchange="appliquerFiltres()">
                                 <option value="">Toutes les races</option>
                             </select>
                         </div>
@@ -859,7 +873,7 @@ async function getDepotsHTML() {
                             <label class="label">
                                 <span class="label-text">📦 Palette</span>
                             </label>
-                            <select id="filtre-palette" class="select select-bordered select-sm" onchange="appliquerFiltres()">
+                            <select id="filtre-palette" class="select select-bordered select-sm text-slate-600" style="padding-top: 0px" onchange="appliquerFiltres()">
                                 <option value="">Toutes les palettes</option>
                                 <option value="sans">Sans palette</option>
                             </select>
@@ -875,7 +889,8 @@ async function getDepotsHTML() {
                             <input 
                                 type="date" 
                                 id="filtre-date-depot-debut" 
-                                class="input input-bordered input-sm"
+                                class="input input-bordered input-sm px-2 text-slate-600"
+                                style="padding-top: 0px"
                                 onchange="appliquerFiltres()"
                             >
                         </div>
@@ -886,7 +901,8 @@ async function getDepotsHTML() {
                             <input 
                                 type="date" 
                                 id="filtre-date-depot-fin" 
-                                class="input input-bordered input-sm"
+                                class="input input-bordered input-sm px-2 text-slate-600"
+                                style="padding-top: 0px"
                                 onchange="appliquerFiltres()"
                             >
                         </div>
@@ -897,7 +913,8 @@ async function getDepotsHTML() {
                             <input 
                                 type="date" 
                                 id="filtre-date-eclo-debut" 
-                                class="input input-bordered input-sm"
+                                class="input input-bordered input-sm px-2 text-slate-600"
+                                style="padding-top: 0px"
                                 onchange="appliquerFiltres()"
                             >
                         </div>
@@ -908,7 +925,8 @@ async function getDepotsHTML() {
                             <input 
                                 type="date" 
                                 id="filtre-date-eclo-fin" 
-                                class="input input-bordered input-sm"
+                                class="input input-bordered input-sm px-2 text-slate-600"
+                                style="padding-top: 0px"
                                 onchange="appliquerFiltres()"
                             >
                         </div>
@@ -916,7 +934,7 @@ async function getDepotsHTML() {
                             <label class="label">
                                 <span class="label-text">⏰ Jours restants</span>
                             </label>
-                            <select id="filtre-jours" class="select select-bordered select-sm" onchange="appliquerFiltres()">
+                            <select id="filtre-jours" class="select select-bordered select-sm text-slate-600" style="padding-top: 0px" onchange="appliquerFiltres()">
                                 <option value="">Tous</option>
                                 <option value="critique">🚨 Critique (0-3 jours)</option>
                                 <option value="bientot">⚠️ Bientôt (4-7 jours)</option>
@@ -931,22 +949,22 @@ async function getDepotsHTML() {
                         <span class="text-sm text-gray-500">Filtres actifs :</span>
                         <div id="filtres-tags" class="flex flex-wrap gap-2"></div>
                     </div>
+                    </div>
+                    </div>
                 </div>
-            </div>
-
             <!-- Résultat du filtre -->
             <div id="filtre-info" class="alert alert-info hidden">
                 <i class="fas fa-info-circle"></i>
                 <span id="filtre-info-text"></span>
             </div>
 
-            <div class="card bg-base-100 shadow">
+            <div class="card bg-base-100 shadow mt-6">
                 <div class="card-body">
                     <!-- Contrôles de tri et pagination -->
                     <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
                         <div class="flex items-center gap-2">
                             <span class="text-sm">Trier par :</span>
-                            <select id="tri-depots" class="select select-bordered select-sm" onchange="changerTri()">
+                            <select id="tri-depots" class="select select-bordered select-sm" style="padding-top: 0px" onchange="changerTri()">
                                 <option value="eclosion">🐣 Éclosion proche → loin</option>
                                 <option value="eclosion_desc">🐣 Éclosion loin → proche</option>
                                 <option value="date_depot">📅 Dépôt récent</option>
@@ -957,7 +975,7 @@ async function getDepotsHTML() {
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-sm">Afficher :</span>
-                            <select id="lignes-par-page" class="select select-bordered select-sm" onchange="changerLignesParPage()">
+                            <select id="lignes-par-page" class="select select-bordered select-sm" style="padding-top: 0px" onchange="changerLignesParPage()">
                                 <option value="5">5 lignes</option>
                                 <option value="10" selected>10 lignes</option>
                                 <option value="25">25 lignes</option>
@@ -991,29 +1009,28 @@ async function getDepotsHTML() {
                     
                     <!-- Pagination -->
                     <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
-                        <div id="pagination-info" class="text-sm text-gray-500"></div>
-                        <div class="join">
-                            <button id="btn-premiere-page" class="join-item btn btn-sm" onclick="allerPage(1)" title="Début">
+                        <div id="pagination-info" class="text-xs md:text-sm text-gray-500"></div>
+                        <div id="depots-pagination-controls" class="join shadow-sm border border-base-300">
+                            <button id="btn-premiere-page" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPage(1)" title="Début">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-page-precedente" class="join-item btn btn-sm" onclick="changerPage(-1)" title="Précédent">
+                            <button id="btn-page-precedente" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPage(-1)" title="Précédent">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <span id="pagination-pages" class="join-item btn btn-sm btn-active"></span>
-                            <button id="btn-page-suivante" class="join-item btn btn-sm" onclick="changerPage(1)" title="Suivant">
+                            <span id="pagination-pages" class="join-item btn btn-xs md:btn-sm btn-primary no-animation font-bold flex items-center justify-center"></span>
+                            <button id="btn-page-suivante" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPage(1)" title="Suivant">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-derniere-page" class="join-item btn btn-sm" onclick="allerPage(-1)" title="Fin">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" />
-                              </svg>
-
+                            <button id="btn-derniere-page" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPage(-1)" title="Fin">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15L5.25 12l7.5-7.5" />
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -1440,6 +1457,18 @@ function reinitialiserFiltres() {
     });
     
     appliquerFiltres();
+}
+
+function toggleFiltresAvances() {
+    const container = document.getElementById('container-filtres-avances');
+    const icon = document.getElementById('icon-toggle-filtres');
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+    } else {
+        container.classList.add('hidden');
+        icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    }
 }
 
 // Formater une date au format court
@@ -2426,25 +2455,25 @@ async function getPalettesHTML() {
                     
                     <!-- Pagination -->
                     <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
-                        <div id="pagination-info-palettes" class="text-sm text-gray-500"></div>
-                        <div class="join">
-                            <button id="btn-premiere-page-palettes" class="join-item btn btn-sm" onclick="allerPagePalette(1)">
+                        <div id="pagination-info-palettes" class="text-xs md:text-sm text-gray-500"></div>
+                        <div class="join shadow-sm border border-base-300">
+                            <button id="btn-premiere-page-palettes" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPagePalette(1)">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-page-precedente-palettes" class="join-item btn btn-sm" onclick="changerPagePalette(-1)">
+                            <button id="btn-page-precedente-palettes" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPagePalette(-1)">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <span id="pagination-pages-palettes" class="join-item btn btn-sm btn-active"></span>
-                            <button id="btn-page-suivante-palettes" class="join-item btn btn-sm" onclick="changerPagePalette(1)">
+                            <span id="pagination-pages-palettes" class="join-item btn btn-xs md:btn-sm btn-primary no-animation font-bold flex items-center justify-center"></span>
+                            <button id="btn-page-suivante-palettes" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPagePalette(1)">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-derniere-page-palettes" class="join-item btn btn-sm" onclick="allerPagePalette(-1)">
+                            <button id="btn-derniere-page-palettes" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPagePalette(-1)">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15L5.25 12l7.5-7.5" />
                                 </svg>
@@ -2869,25 +2898,25 @@ async function getClientsHTML() {
 
                     <!-- Pagination -->
                     <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
-                        <div id="pagination-info-clients" class="text-sm text-gray-500"></div>
-                        <div class="join">
-                            <button id="btn-premiere-page-clients" class="join-item btn btn-sm" onclick="allerPageClient(1)" title="Début">
+                        <div id="pagination-info-clients" class="text-xs md:text-sm text-gray-500"></div>
+                        <div class="join shadow-sm border border-base-300">
+                            <button id="btn-premiere-page-clients" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPageClient(1)" title="Début">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-page-precedente-clients" class="join-item btn btn-sm" onclick="changerPageClient(-1)" title="Précédent">
+                            <button id="btn-page-precedente-clients" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPageClient(-1)" title="Précédent">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            <span id="pagination-pages-clients" class="join-item btn btn-sm btn-active"></span>
-                            <button id="btn-page-suivante-clients" class="join-item btn btn-sm" onclick="changerPageClient(1)" title="Suivant">
+                            <span id="pagination-pages-clients" class="join-item btn btn-xs md:btn-sm btn-primary no-animation font-bold flex items-center justify-center"></span>
+                            <button id="btn-page-suivante-clients" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="changerPageClient(1)" title="Suivant">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
-                            <button id="btn-derniere-page-clients" class="join-item btn btn-sm" onclick="allerPageClient(-1)" title="Fin">
+                            <button id="btn-derniere-page-clients" class="join-item btn btn-xs md:btn-sm btn-neutral" onclick="allerPageClient(-1)" title="Fin">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15L5.25 12l7.5-7.5" />
                                 </svg>
