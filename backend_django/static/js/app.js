@@ -2373,11 +2373,11 @@ async function getPalettesHTML() {
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold">🎨 Gestion des Palettes</h2>
                 <div class="space-x-2">
-                    <button onclick="ouvrirModalNouvellePalette()" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Nouvelle Palette
+                    <button onclick="ouvrirModalNouvellePalette()" class="btn btn-sm py-0 btn-primary">
+                        <i class="fas fa-plus"></i> <span class="hidden md:inline">Nouvelle Palette</span>
                     </button>
-                    <button onclick="ouvrirModalAjouterPlusieursPalettes()" class="btn btn-secondary">
-                        <i class="fas fa-layer-group"></i> Ajouter plusieurs
+                    <button onclick="ouvrirModalAjouterPlusieursPalettes()" class="btn btn-sm py-0 btn-secondary">
+                        <i class="fas fa-layer-group"></i> <span class="hidden md:inline">Ajouter plusieurs</span>
                     </button>
                 </div>
             </div>
@@ -2859,7 +2859,7 @@ async function getClientsHTML() {
         <div class="space-y-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold">👥 Clients</h2>
-                <button onclick="ouvrirModalNouveauClient()" class="btn btn-primary">
+                <button onclick="ouvrirModalNouveauClient()" class="btn btn-primary  btn-sm py-o">
                     <i class="fas fa-plus"></i> Nouveau client
                 </button>
             </div>
@@ -3108,11 +3108,19 @@ async function getRacesHTML() {
             <div class="flex justify-between items-center">
                 <h2 class="text-2xl font-bold">🥚 Races & Catégories</h2>
                 <div class="space-x-2">
-                    <button onclick="ouvrirModalNouvelleCategorie()" class="btn btn-secondary">
-                        <i class="fas fa-plus"></i> Catégorie
+                    <button onclick="ouvrirModalNouvelleCategorie()" class="btn btn-secondary btn-sm py-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+</svg>
+    <span class="hidden md:inline">Catégorie</span>
+ 
                     </button>
-                    <button onclick="ouvrirModalNouvelleRace()" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Race
+                    <button onclick="ouvrirModalNouvelleRace()" class="btn btn-primary btn-sm py-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 0 1 9 14.437V9.564Z" />
+</svg>
+ <span class="hidden md:inline">Race</span>
                     </button>
                 </div>
             </div>
@@ -3147,8 +3155,11 @@ async function chargerRaces() {
                 <div class="divider my-2"></div>
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="font-semibold text-sm">Races associées</h4>
-                    <button onclick="ouvrirModalNouvelleRace(${cat.id})" class="btn btn-xs btn-primary">
-                        <i class="fas fa-plus"></i> Race
+                    <button onclick="ouvrirModalNouvelleRace(${cat.id})" class="btn btn-xs btn-primary py-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 0 1 9 14.437V9.564Z" />
+</svg>Race
                     </button>
                 </div>
                 <div class="space-y-2">
